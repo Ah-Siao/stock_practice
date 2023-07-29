@@ -14,6 +14,13 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from keras.layers import Flatten
 from keras import backend as K
+import pickle
+
+model_path = './model/'
+history_path = './history/'
+st.session_state['model'] = 0
+# st.text(os.path.exists(f'{model_path}8183model.pkl'))
+# st.text(os.path.exists(f'{history_path}8183 history.csv'))
 
 
 def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0):
@@ -74,14 +81,29 @@ end_date = datetime.now().strftime('%Y-%m-%d')
 st.text('The model is establish by data from:')
 st.text(f'start date:{start_date}')
 st.text(f'end data:{end_date}')
-st.session_state['model'] = 0
+st.text('so far, you have model for stock number......')
+st.text([i.split('model')[0] for i in os.listdir(model_path)])
 
 while input_name:
     yf.pdr_override()
     stock = pdr.get_data_yahoo(input_name, start=start_date, end=end_date)
+    stock_num = input_name.split('.')[0]
+    if os.path.exists(f'{model_path}{stock_num}model.pkl'):
+        ANSWER = 'NONE'
+        while ANSWER == 'NONE':
+            ANSWER = st.selectbox(
+                'Do you want to rebuild the model?', ['NONE', 'YES', 'NO'])
+            if ANSWER == 'YES':
+                st.session_state['model'] = 0
+            elif ANSWER == 'NO':
+                st.session_state['model'] = 1
+            elif ANSWER == 'NONE':
+                st.text('Please decide whether to build your new model! Thank you!!')
+
     break
 
 try:
+    st.text('stock price of last five days')
     st.write(stock.tail(5))
 except:
     pass
@@ -138,23 +160,33 @@ model.compile(
     metrics=["mean_squared_error"],
 )
 
+
 if st.session_state['model'] == 0:
     my_bar = st.progress(0.0, text='Establishing the model.....')
     history = model.fit(
         x_train,
         y_train,
         validation_split=0.2,
-        epochs=3,
+        epochs=100,
         batch_size=20,
         callbacks=callbacks,
     )
     st.session_state['model'] == 1
     my_bar.progress(1.0, text='Successfully build the model!')
-else:
-    pass
+    filename = f'model/{stock_num}model.pkl'
+    with open(filename, 'wb') as file:
+        pickle.dump(model, file)
+    df = pd.DataFrame(history.history)
+    df.to_csv(f'history/{stock_num}history.csv')
 
+elif st.session_state['model'] == 1:
+    st.text('Let us use our old model!')
 
-df = pd.DataFrame(history.history)
+# load the model and history:
+df = pd.read_csv(f'history/{stock_num}history.csv')
+
+with open(f"model/{stock_num}model.pkl", 'rb') as f:
+    model = pickle.load(f)
 
 fig = plt.figure(figsize=(10, 10))
 fig.add_subplot(3, 1, 1)
