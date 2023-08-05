@@ -20,9 +20,15 @@ from custom_trans import transformer_encoder, build_model, lr_scheduler, shift
 model_path = './model/'
 history_path = './history/'
 st.session_state['model'] = 0
+st.session_state['input'] = 0
 
-input_name = st.text_input('Please enter the stock ID')
-st.text("e.g. for 精星 8183.TWO, enter '8183.TWO'")
+while st.session_state['input'] == 0:
+    input_name = st.text_input('Please enter the stock ID')
+    st.text("e.g. for 精星 8183.TWO, enter '8183.TWO'")
+    if input_name:
+        st.session_state['input'] = 1
+    else:
+        st.stop()
 
 start_date = str(datetime(2020, 1, 1).date())
 end_date = datetime.now().strftime('%Y-%m-%d')
@@ -35,18 +41,25 @@ st.text([i.split('model')[0] for i in os.listdir(model_path)])
 while input_name:
     yf.pdr_override()
     stock = pdr.get_data_yahoo(input_name, start=start_date, end=end_date)
+    if len(pdr.get_data_yahoo(input_name, start=start_date, end=end_date)) == 0:
+        st.text('You enter a wrong number...')
+        st.text('Please enter again.....')
+        st.stop()
+        break
     stock_num = input_name.split('.')[0]
     if os.path.exists(f'{model_path}{stock_num}model.pkl'):
         ANSWER = 'NONE'
         while ANSWER == 'NONE':
             ANSWER = st.selectbox(
                 'Do you want to rebuild the model?', ['NONE', 'YES', 'NO'])
+
             if ANSWER == 'YES':
                 st.session_state['model'] = 0
             elif ANSWER == 'NO':
                 st.session_state['model'] = 1
             elif ANSWER == 'NONE':
                 st.text('Please decide whether to build your new model! Thank you!!')
+                st.stop()
 
     break
 
