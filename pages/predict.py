@@ -21,6 +21,7 @@ model_path = './model/'
 history_path = './history/'
 st.session_state['model'] = 0
 st.session_state['input'] = 0
+st.session_state['hyperparameter'] = 0
 
 while st.session_state['input'] == 0:
     input_name = st.text_input('Please enter the stock ID')
@@ -42,8 +43,8 @@ while input_name:
     yf.pdr_override()
     stock = pdr.get_data_yahoo(input_name, start=start_date, end=end_date)
     if len(pdr.get_data_yahoo(input_name, start=start_date, end=end_date)) == 0:
-        st.text('You enter a wrong number...')
-        st.text('Please enter again.....')
+        st.title('You enter a wrong number...')
+        st.title('Please enter it again.....')
         st.stop()
         break
     stock_num = input_name.split('.')[0]
@@ -56,6 +57,10 @@ while input_name:
             if ANSWER == 'YES':
                 st.session_state['model'] = 0
             elif ANSWER == 'NO':
+                with open(f"model/{stock_num}model.pkl", 'rb') as f:
+                    model = pickle.load(f)
+                    timesteps = model.get_config(
+                    )['layers'][0]['config']['batch_input_shape'][1]
                 st.session_state['model'] = 1
             elif ANSWER == 'NONE':
                 st.text('Please decide whether to build your new model! Thank you!!')
@@ -69,6 +74,47 @@ try:
 except:
     pass
 
+while st.session_state['hyperparameter'] == 0 and st.session_state['model'] == 0:
+    ans = st.selectbox(
+        'Do you want to set the hyperparameters by yourself?', ['YES', 'NO'])
+    if ans == 'NO':
+        timesteps = 30
+        epochs = 50
+        headsize = 46
+        numhead = 60
+        ff_dim = 55
+        num_transformer_blocks = 5
+        learning_rate = 1e-4
+        patience = 10
+        st.session_state['hyperparameter'] = 1
+    elif ans == 'YES':
+        st.write('Please choose the hyperparameters')
+        timesteps = st.text_input('timesteps')
+        epochs = st.text_input('epochs')
+        headsize = st.text_input(
+            'headsize (Embedding size for attention), default: 46')
+        numhead = st.text_input('number of attention head, default: 60')
+        ff_dim = st.text_input(
+            'Hidden layer size in feed forward network inside transformer, default: 55')
+        num_transformer_blocks = st.text_input(
+            'number of transformer blocks, default: 5')
+        learning_rate = st.text_input(
+            'learning rate for Adam optimizer: default: 1e-4')
+        patience = st.text_input('patience for callback: default: 10')
+        if timesteps and epochs and headsize and numhead and ff_dim and num_transformer_blocks and learning_rate and patience:
+            timesteps = int(timesteps)
+            epochs = int(epochs)
+            headsize = int(headsize)
+            numhead = int(numhead)
+            ff_dim = int(ff_dim)
+            num_transformer_blocks = int(num_transformer_blocks)
+            learning_rate = float(learning_rate)
+            patience = int(patience)
+            st.session_state['hyperparameter'] = 1
+        else:
+            st.stop()
+
+
 target = 'Close'
 train_start_date = start_date
 train_end_date = '2022-10-31'
@@ -81,7 +127,7 @@ st.text(f'size of test set: {len(test_set)}')
 
 sc = MinMaxScaler(feature_range=(0, 1))
 training_set_scaled = sc.fit_transform(training_set)
-timesteps = 20
+
 x_train = []
 y_train = []
 
@@ -95,53 +141,53 @@ x_train = x_train.reshape((x_train.shape[0], x_train.shape[1], 1))
 idx = np.random.permutation(len(x_train))
 x_train = x_train[idx]
 y_train = y_train[idx]
-
-callbacks = [
-    keras.callbacks.EarlyStopping(patience=10, restore_best_weights=True),
-    keras.callbacks.LearningRateScheduler(lr_scheduler)
-]
-
 input_shape = x_train.shape[1:]
 print(input_shape)
 
-model = build_model(
-    input_shape,
-    head_size=46,  # Embedding size for attention
-    num_heads=60,  # Number of attention heads
-    ff_dim=55,  # Hidden layer size in feed forward network inside transformer
-    num_transformer_blocks=5,
-    mlp_units=[256],
-    mlp_dropout=0.4,
-    dropout=0.14,
-)
-
-model.compile(
-    loss="mean_squared_error",
-    optimizer=keras.optimizers.Adam(learning_rate=1e-4),
-    metrics=["mean_squared_error"],
-)
+while st.session_state['model'] == 1:
+    st.text('Let us use our old model!')
+    break
 
 
-if st.session_state['model'] == 0:
-    my_bar = st.progress(0.0, text='Establishing the model.....')
+while st.session_state['model'] == 0:
+    callbacks = [
+        keras.callbacks.EarlyStopping(
+            patience=patience, restore_best_weights=True),
+        keras.callbacks.LearningRateScheduler(lr_scheduler)
+    ]
+    model = build_model(
+        input_shape,
+        head_size=headsize,  # Embedding size for attention
+        num_heads=numhead,  # Number of attention heads
+        ff_dim=ff_dim,  # Hidden layer size in feed forward network inside transformer
+        num_transformer_blocks=num_transformer_blocks,
+        mlp_units=[256],
+        mlp_dropout=0.4,
+        dropout=0.14,
+    )
+    model.compile(
+        loss="mean_squared_error",
+        optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
+        metrics=["mean_squared_error"],
+    )
+    my_bar = st.progress(
+        0.0, text='Establishing the model...You might need to wait for a while depending on the number of epochs you set....)')
     history = model.fit(
         x_train,
         y_train,
         validation_split=0.2,
-        epochs=100,
+        epochs=epochs,
         batch_size=20,
         callbacks=callbacks,
     )
-    st.session_state['model'] == 1
+    st.session_state['model'] = 1
     my_bar.progress(1.0, text='Successfully build the model!')
     filename = f'model/{stock_num}model.pkl'
     with open(filename, 'wb') as file:
         pickle.dump(model, file)
+
     df = pd.DataFrame(history.history)
     df.to_csv(f'history/{stock_num}history.csv')
-
-elif st.session_state['model'] == 1:
-    st.text('Let us use our old model!')
 
 
 # load the model and history:
@@ -149,6 +195,7 @@ df = pd.read_csv(f'history/{stock_num}history.csv')
 
 with open(f"model/{stock_num}model.pkl", 'rb') as f:
     model = pickle.load(f)
+
 
 fig = plt.figure(figsize=(10, 10))
 fig.add_subplot(3, 1, 1)
