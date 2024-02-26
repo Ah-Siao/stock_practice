@@ -12,14 +12,14 @@ st.header('Welcome to this little Taiwan stock visualization project!')
 
 yf.pdr_override()
 start_year = st.selectbox('Please enter the starting year', [
-                          i for i in range(2013, 2024)])
+                          i for i in range(2013, datetime.now().year+1)])
 end_year = st.selectbox('Please enter the end year:', [
-                        i for i in range(2013, 2024)])
+                        i for i in range(2013, datetime.now().year+1)])
 view = st.multiselect('Please enter the properties you want to see individually:', [
                       'Open', 'Close', 'Volume', 'High', 'Low'])
 
 
-if end_year == 2023:
+if end_year == datetime.now().year:
     end_time = datetime.now()
 else:
     end_time = f'{end_year}-01-01'
@@ -38,7 +38,7 @@ except:
     df = pdr.get_data_yahoo(
         input_name, start=f'{start_year}-01-01', end=end_time)
 
-if len(mystock) is 0:
+if len(mystock) == 0:
     pass
 else:
     st.markdown('Here are the latest five days stock price:')
