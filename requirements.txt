@@ -1,10 +1,9 @@
 keras==2.11.0
 matplotlib==3.7.0
 numpy==1.24.3
-numpy==1.25.0
 pandas==1.5.3
 pandas_datareader==0.10.0
 scikit_learn==1.2.1
 streamlit==1.25.0
-tensorflow_intel==2.11.0
+tensorflow_intel==2.12.0
 yfinance==0.2.18

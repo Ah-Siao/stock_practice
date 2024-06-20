@@ -31,8 +31,8 @@ input_name = f'{mystock}.TW'
 try:
     if len(pdr.get_data_yahoo(input_name, start=f'{start_year}-01-01', end=end_time)) == 0:
         input_name = f'{mystock}.TWO'
-        df = pdr.get_data_yahoo(
-            input_name, start=f'{start_year}-01-01', end=end_time)
+    df = pdr.get_data_yahoo(
+        input_name, start=f'{start_year}-01-01', end=end_time)
 except:
     input_name = f'{mystock}.TWO'
     df = pdr.get_data_yahoo(
