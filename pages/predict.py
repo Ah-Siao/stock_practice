@@ -48,7 +48,7 @@ while input_name:
         st.stop()
         break
     stock_num = input_name.split('.')[0]
-    if os.path.exists(f'{model_path}{stock_num}model.pkl'):
+    if os.path.exists(f'{model_path}{stock_num}model.keras'):
         ANSWER = 'NONE'
         while ANSWER == 'NONE':
             ANSWER = st.selectbox(
@@ -57,10 +57,10 @@ while input_name:
             if ANSWER == 'YES':
                 st.session_state['model'] = 0
             elif ANSWER == 'NO':
-                with open(f"model/{stock_num}model.pkl", 'rb') as f:
-                    model = pickle.load(f)
-                    timesteps = model.get_config(
-                    )['layers'][0]['config']['batch_input_shape'][1]
+                # with open(f"model/{stock_num}model.pkl", 'rb') as f:
+                #     model = pickle.load(f)
+                model=tf.keras.models.load_model(f"model/{stock_num}model.keras")
+                timesteps = model.get_config()['layers'][0]['config']['batch_input_shape'][1]
                 st.session_state['model'] = 1
             elif ANSWER == 'NONE':
                 st.text('Please decide whether to build your new model! Thank you!!')
@@ -86,6 +86,12 @@ while st.session_state['hyperparameter'] == 0 and st.session_state['model'] == 0
         num_transformer_blocks = 5
         learning_rate = 1e-4
         patience = 10
+        st.text(f"Default hyperparameters:")
+        st.text(f"timesteps:{timesteps}, epochs:{epochs}, learning rate:{learning_rate}, patience:{patience}")
+        st.text(f"headsize (Embedding size for attention): {headsize}")
+        st.text(f"numhead (number of attention head): {numhead}")
+        st.text(f"Hidden layer size in feed forward network inside transformer: {ff_dim}")
+        st.text(f"number of transformer blocks: {num_transformer_blocks}")
         st.session_state['hyperparameter'] = 1
     elif ans == 'YES':
         st.write('Please choose the hyperparameters')
@@ -182,9 +188,13 @@ while st.session_state['model'] == 0:
     )
     st.session_state['model'] = 1
     my_bar.progress(1.0, text='Successfully build the model!')
-    filename = f'model/{stock_num}model.pkl'
-    with open(filename, 'wb') as file:
-        pickle.dump(model, file)
+    # filename = f'model/{stock_num}model.pkl'
+    # try:
+    #     with open(filename, 'wb') as file:
+    #         pickle.dump(model, file)
+    # except:
+    model.save(f'model/{stock_num}model.keras')
+
 
     df = pd.DataFrame(history.history)
     df.to_csv(f'history/{stock_num}history.csv')
@@ -193,8 +203,14 @@ while st.session_state['model'] == 0:
 # load the model and history:
 df = pd.read_csv(f'history/{stock_num}history.csv')
 
-with open(f"model/{stock_num}model.pkl", 'rb') as f:
-    model = pickle.load(f)
+# try:
+#     with open(f"model/{stock_num}model.pkl", 'rb') as f:
+#         model = pickle.load(f)
+# except:
+#     model=tf.keras.models.load_model(f"model/{stock_num}model.keras")
+#     timesteps = model.get_config()['layers'][0]['config']['batch_input_shape'][1]
+
+
 
 
 fig = plt.figure(figsize=(10, 10))
